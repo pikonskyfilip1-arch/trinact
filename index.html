@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Křížovka</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --cream: #FAF7F2; --accent: #C4714A; --accent-light: #F5E8DF;
+  --dark: #2A1F1A; --muted: #8A7060; --card-bg: #FFFCF8;
+  --border: #E8DDD4; --highlight: #C4714A; --cell: 42px;
+}
+body {
+  min-height: 100vh; background: var(--cream);
+  font-family: 'DM Sans', sans-serif;
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem;
+}
+body::before {
+  content: ''; position: fixed; top: -40%; right: -20%;
+  width: 600px; height: 600px; border-radius: 50%;
+  background: radial-gradient(circle, #E8C4B055 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+.container { position: relative; z-index: 1; width: 100%; max-width: 560px; }
+.card {
+  background: var(--card-bg); border: 1px solid var(--border);
+  border-radius: 24px; padding: 2.5rem 2rem;
+  box-shadow: 0 2px 40px rgba(196,113,74,0.08);
+}
+h1 {
+  font-family: 'Playfair Display', serif; font-size: 24px;
+  font-weight: 400; color: var(--dark); text-align: center;
+  margin-bottom: 0.5rem;
+}
+.sub { font-size: 13px; color: var(--muted); text-align: center; margin-bottom: 2rem; line-height: 1.6; }
+.divider { width: 40px; height: 1px; background: #E8C4B0; margin: 0 auto 2rem; }
+
+/* Grid */
+.grid-wrap { overflow-x: auto; margin-bottom: 2rem; }
+table { border-collapse: collapse; margin: 0 auto; }
+td {
+  width: var(--cell); height: var(--cell);
+  border: none; padding: 0; position: relative;
+}
+td.cell {
+  border: 1.5px solid #D4C8BE;
+  background: #fff;
+}
+td.highlight {
+  border: 1.5px solid var(--accent);
+  background: var(--accent-light);
+}
+td.empty { background: transparent; border: none; }
+input.cell-input {
+  width: 100%; height: 100%;
+  border: none; background: transparent;
+  text-align: center; font-size: 17px; font-weight: 500;
+  color: var(--dark); text-transform: uppercase;
+  font-family: 'DM Sans', sans-serif;
+  outline: none; cursor: pointer; caret-color: var(--accent);
+  padding: 0;
+}
+input.cell-input:focus { background: #FFF0E8; }
+.num {
+  position: absolute; top: 2px; left: 3px;
+  font-size: 8px; color: var(--muted); line-height: 1;
+  pointer-events: none;
+}
+.revealed { color: var(--accent) !important; font-weight: 700; }
+
+/* Clues */
+.clues { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 2rem; }
+.clue {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  font-size: 13px; color: var(--muted); line-height: 1.5;
+}
+.clue-num {
+  min-width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent-light); color: var(--accent);
+  font-size: 11px; font-weight: 600; display: flex;
+  align-items: center; justify-content: center; margin-top: 1px;
+  flex-shrink: 0;
+}
+.clue-dir { font-weight: 600; color: var(--dark); margin-right: 2px; }
+
+.btn {
+  width: 100%; padding: 12px; border-radius: 100px;
+  font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; border: none;
+  background: var(--accent); color: #fff;
+  transition: background 0.18s;
+}
+.btn:hover { background: #B5633E; }
+.btn-secondary {
+  background: transparent; color: var(--muted);
+  border: 1.5px solid #D9CFC6; margin-top: 0.75rem;
+}
+.btn-secondary:hover { background: #F0EAE0; }
+
+.result {
+  display: none; text-align: center; margin-top: 1.5rem;
+  padding: 1.25rem; background: var(--accent-light);
+  border-radius: 14px;
+}
+.result.show { display: block; }
+.result h2 { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--accent); margin-bottom: 0.5rem; }
+.result p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+/* Vertical word highlight letter */
+td.vert-highlight {
+  border: 1.5px solid var(--accent);
+  background: var(--accent-light);
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+  <h1>✏️ Křížovka</h1>
+  <p class="sub">Vyplň správně všechna slova.<br>Ve zvýrazněných políčkách se skrývá tajná zpráva.</p>
+  <div class="divider"></div>
+
+  <div class="grid-wrap">
+    <table id="grid"></table>
+  </div>
+
+  <div class="clues">
+    <div class="clue"><span class="clue-num">1</span><span><span class="clue-dir">→</span> Město, kde jsme byli naposled</span></div>
+    <div class="clue"><span class="clue-num">2</span><span><span class="clue-dir">→</span> Stát, kde jsme byli naposled</span></div>
+    <div class="clue"><span class="clue-num">3</span><span><span class="clue-dir">→</span> Aerolinka, kterou jsme letěli 16. srpna</span></div>
+    <div class="clue"><span class="clue-num">4</span><span><span class="clue-dir">→</span> Stát, kde se chceš nejvíc podívat</span></div>
+    <div class="clue"><span class="clue-num">5</span><span><span class="clue-dir">→</span> Jedno z tvých oblíbených jídel</span></div>
+    <div class="clue"><span class="clue-num">6</span><span><span class="clue-dir">→</span> Zkratka provincie, kam letím</span></div>
+    <div class="clue"><span class="clue-num">7</span><span><span class="clue-dir">→</span> Energy drink, který piju často</span></div>
+  </div>
+
+  <button class="btn" onclick="check()">Zkontrolovat</button>
+  <button class="btn btn-secondary" onclick="reveal()">Zobrazit řešení</button>
+
+  <div class="result" id="result">
+    <h2 id="result-title"></h2>
+    <p id="result-text"></p>
+  </div>
+</div>
+</div>
+
+<script>
+// Words and their highlighted letter index (0-based)
+// T-Ř-I-N-Á-C-T
+// 1. ATHÉNY   → T at index 3 (A-T-H-É-N-Y) wait: A=0,T=1,H=2,É=3,N=4,Y=5 → T at 1
+// 2. ŘECKO    → Ř at index 0
+// 3. WIZZAIR  → I at index 4 (W=0,I=1,Z=2,Z=3,A=4,I=5,R=6) → first I at 1
+// 4. ŠPANĚLSKO→ N at index 4 (Š=0,P=1,A=2,N=3,Ě=4,L=5,S=6,K=7,O=8) → N at 3
+// 5. CAESARSALÁT → Á at index 11 (C=0,A=1,E=2,S=3,A=4,R=5,S=6,A=7,L=8,Á=9,T=10) 
+//    let's use SALÁT: S=0,A=1,L=2,Á=3,T=4 → Á at 3
+// 6. BC → C at index 1
+// 7. MONSTER  → T at index 6 (M=0,O=1,N=2,S=3,T=4,E=5,R=6) → T at 4
+
+const words = [
+  { word: "ATHÉNY",       highlight: 1, clue: 1 }, // T
+  { word: "ŘECKO",        highlight: 0, clue: 2 }, // Ř
+  { word: "WIZZAIR",      highlight: 1, clue: 3 }, // I (first I)
+  { word: "ŠPANĚLSKO",    highlight: 3, clue: 4 }, // N
+  { word: "CAESARSALÁT",  highlight: 9, clue: 5 }, // Á
+  { word: "BC",           highlight: 1, clue: 6 }, // C
+  { word: "MONSTER",      highlight: 4, clue: 7 }, // T
+];
+
+// We'll lay out words horizontally, stacking them so highlighted letters align vertically
+// Find max highlight index to align column
+const col = Math.max(...words.map(w => w.highlight)); // align all highlights at this column
+// Actually we align each word so its highlight letter is in the same column
+// Grid: rows = 7, cols = enough for longest left + 1 + longest right
+const leftMax = Math.max(...words.map(w => w.highlight));
+const rightMax = Math.max(...words.map(w => w.word.length - 1 - w.highlight));
+const COLS = leftMax + 1 + rightMax;
+const ROWS = words.length;
+const HCOL = leftMax; // highlighted column index
+
+// Build grid data
+const grid = Array.from({length: ROWS}, () => Array(COLS).fill(null));
+words.forEach((w, row) => {
+  const start = HCOL - w.highlight;
+  for (let c = 0; c < w.word.length; c++) {
+    grid[row][start + c] = { letter: w.word[c], isHL: c === w.highlight, wordRow: row, wordCol: c };
+  }
+});
+
+// Render
+const table = document.getElementById('grid');
+const inputs = [];
+for (let r = 0; r < ROWS; r++) {
+  const tr = document.createElement('tr');
+  for (let c = 0; c < COLS; c++) {
+    const td = document.createElement('td');
+    const cell = grid[r][c];
+    if (cell) {
+      td.className = cell.isHL ? 'cell highlight' : 'cell';
+      if (cell.wordCol === 0) {
+        const num = document.createElement('span');
+        num.className = 'num';
+        num.textContent = words[r].clue;
+        td.appendChild(num);
+      }
+      const inp = document.createElement('input');
+      inp.className = 'cell-input';
+      inp.maxLength = 1;
+      inp.dataset.row = r;
+      inp.dataset.col = c;
+      inp.dataset.letter = cell.letter;
+      inp.dataset.ishl = cell.isHL ? '1' : '0';
+      inp.addEventListener('input', function() {
+        this.value = this.value.toUpperCase().slice(-1);
+        // auto-advance
+        const allInRow = [...document.querySelectorAll(`input[data-row="${r}"]`)];
+        const idx = allInRow.indexOf(this);
+        if (this.value && idx < allInRow.length - 1) allInRow[idx+1].focus();
+      });
+      inp.addEventListener('keydown', function(e) {
+        if (e.key === 'Backspace' && !this.value) {
+          const allInRow = [...document.querySelectorAll(`input[data-row="${r}"]`)];
+          const idx = allInRow.indexOf(this);
+          if (idx > 0) { allInRow[idx-1].focus(); allInRow[idx-1].value = ''; }
+        }
+      });
+      td.appendChild(inp);
+      inputs.push(inp);
+    } else {
+      td.className = 'empty';
+    }
+    tr.appendChild(td);
+  }
+  table.appendChild(tr);
+}
+
+function check() {
+  let allCorrect = true;
+  let allFilled = true;
+  inputs.forEach(inp => {
+    if (!inp.value) allFilled = false;
+    if (inp.value !== inp.dataset.letter) allCorrect = false;
+  });
+  const res = document.getElementById('result');
+  const title = document.getElementById('result-title');
+  const text = document.getElementById('result-text');
+  res.classList.add('show');
+  if (!allFilled) {
+    title.textContent = '⚠️ Nejsi hotová!';
+    text.textContent = 'Vyplň prosím všechna políčka.';
+  } else if (allCorrect) {
+    title.textContent = '🎉 Správně!';
+    text.innerHTML = 'Ve zvýrazněných políčkách ti vyšlo:<br><strong style="font-size:18px;color:#C4714A;letter-spacing:0.1em">T Ř I N Á C T</strong>';
+    setTimeout(() => window.location.href = 'trinact.html', 2200);
+  } else {
+    title.textContent = '❌ Zkus to znovu';
+    text.textContent = 'Někde je chybička. Zkontroluj odpovědi.';
+  }
+}
+
+function reveal() {
+  inputs.forEach(inp => {
+    inp.value = inp.dataset.letter;
+    if (inp.dataset.ishl === '1') inp.classList.add('revealed');
+  });
+  const res = document.getElementById('result');
+  const title = document.getElementById('result-title');
+  const text = document.getElementById('result-text');
+  res.classList.add('show');
+  title.textContent = '💡 Řešení zobrazeno';
+  text.innerHTML = 'Ve zvýrazněných políčkách vidíš:<br><strong style="font-size:18px;color:#C4714A;letter-spacing:0.1em">T Ř I N Á C T</strong>';
+  setTimeout(() => window.location.href = 'trinact.html', 2200);
+}
+</script>
+</body>
+</html>
